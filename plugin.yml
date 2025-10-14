@@ -1,48 +1,38 @@
-name: Buildkite Plugin
-description: Exceptional functionality
+name: Incident PagerDuty
+description: Create PagerDuty incidents when Buildkite builds or jobs fail
 author: https://github.com/buildkite-plugins
 requirements:
   - bash
+  - curl
 configuration:
   properties:
-    mandatory:
+    integration-key:
       type: string
-      description: "A required option for your plugin."
-    optional:
+      description: "PagerDuty integration key for Events API v2. This is a 32-character hex string found in your service's integrations."
+    check:
       type: string
-      description: "An optional configuration for your plugin."
-    numbers:
-      type: array
-      description: "An array where only numbers are valid."
-      items:
-        type: number
-    enabled:
-      type: boolean
-      description: "A boolean that can enable or disable a feature. Defaults to `false`."
-      default: false
-    config:
+      description: "What to check for failures: 'build', 'job', or 'both'. Defaults to 'job'."
+      enum:
+        - build
+        - job
+        - both
+      default: job
+    severity:
+      type: string
+      description: "PagerDuty incident severity. Defaults to 'error'."
+      enum:
+        - critical
+        - error
+        - warning
+        - info
+      default: error
+    dedup-key:
+      type: string
+      description: "Custom deduplication key. If not provided, will be auto-generated based on build/job details."
+    custom-details:
       type: object
-      description: "An object with nested properties, each defined with specific types. The `host` property must always be defined."
-      properties:
-        host:
-          type: string
-          description: "A required string value for `config`."
-        port:
-          type: number
-          description: "A number value with a default that can be overridden."
-          default: 1234
-        ssl:
-          type: boolean
-          description: "A boolen value that defaults to `true`."
-          default: true
-      required:
-        - host
+      description: "Additional custom details to include in the PagerDuty incident."
       additionalProperties: true
-    timeout:
-      type: number
-      description: "A number with minimum and maximum values defined."
-      minimum: 1
-      maximum: 60
   required:
-    - mandatory
+    - integration-key
   additionalProperties: false
