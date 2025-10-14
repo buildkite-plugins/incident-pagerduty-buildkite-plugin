@@ -46,7 +46,7 @@ steps:
 
 ### `integration-key` (string)
 
-The PagerDuty integration key for your service. This is a 32-character hex string (e.g., `95ed048753ef450ac065962fdaee1d1c`) that routes incidents to the correct service.
+The PagerDuty integration key for your service. This is a 32-character hex string (e.g., `95ed048753ef450ac065962fdgse1d1c`) that routes incidents to the correct service.
 
 ## Optional Configuration
 
