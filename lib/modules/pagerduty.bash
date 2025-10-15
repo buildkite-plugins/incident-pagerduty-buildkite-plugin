@@ -42,6 +42,71 @@ build_incident_payload() {
   # Build summary
   local summary="Buildkite build failed: ${pipeline} #${build_number}"
   
+  # Build the JSON payload using jq for proper escaping
+  jq -n \
+    --arg routing_key "${integration_key}" \
+    --arg dedup_key "${dedup_key}" \
+    --arg summary "${summary}" \
+    --arg severity "${severity}" \
+    --arg timestamp "${timestamp}" \
+    --arg pipeline "${pipeline}" \
+    --arg branch "${branch}" \
+    --arg build_url "${build_url}" \
+    --arg build_number "${build_number}" \
+    --arg job_id "${job_id}" \
+    --arg job_label "${job_label}" \
+    --arg commit "${commit}" \
+    --arg message "${message}" \
+    --arg agent_name "${agent_name}" \
+    '{
+      routing_key: $routing_key,
+      event_action: "trigger",
+      dedup_key: $dedup_key,
+      payload: {
+        summary: $summary,
+        severity: $severity,
+        source: "buildkite",
+        component: $pipeline,
+        timestamp: $timestamp,
+        custom_details: {
+          pipeline: $pipeline,
+          branch: $branch,
+          build_number: $build_number,
+          build_url: $build_url,
+          job_id: $job_id,
+          job_label: $job_label,
+          commit: $commit,
+          commit_message: $message,
+          agent: $agent_name,
+          failed_at: $timestamp
+        }
+      }
+    }'
+}
+
+# Old heredoc version (kept for reference, remove after testing)
+build_incident_payload_old() {
+  local integration_key="$1"
+  local severity="$2"
+  local dedup_key="$3"
+  local custom_details="${4:-{}}"
+  
+  # Gather Buildkite context
+  local pipeline="${BUILDKITE_PIPELINE_SLUG:-unknown}"
+  local branch="${BUILDKITE_BRANCH:-unknown}"
+  local build_url="${BUILDKITE_BUILD_URL:-}"
+  local build_number="${BUILDKITE_BUILD_NUMBER:-0}"
+  local job_id="${BUILDKITE_JOB_ID:-unknown}"
+  local job_label="${BUILDKITE_LABEL:-unknown}"
+  local commit="${BUILDKITE_COMMIT:-unknown}"
+  local message="${BUILDKITE_MESSAGE:-No commit message}"
+  local agent_name="${BUILDKITE_AGENT_NAME:-unknown}"
+  local timestamp
+  timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  
+  # Build summary
+  local summary="Buildkite build failed: ${pipeline} #${build_number}"
+  
   # Escape JSON strings (backslashes first, then quotes)
   message="${message//\\/\\\\}"
   message="${message//\"/\\\"}"
@@ -58,6 +123,7 @@ build_incident_payload() {
     "summary": "${summary}",
     "severity": "${severity}",
     "source": "buildkite",
+    "component": "${pipeline}",
     "timestamp": "${timestamp}",
     "custom_details": {
       "pipeline": "${pipeline}",
@@ -113,6 +179,8 @@ create_incident() {
   local payload
   payload=$(build_incident_payload "${integration_key}" "${severity}" "${dedup_key}" "${custom_details}")
   
+  # Log payload for debugging (will be redacted by Buildkite)
+  log_info "Sending payload to PagerDuty..."
   log_debug "PagerDuty payload: ${payload}"
   
   # Send the request to PagerDuty
