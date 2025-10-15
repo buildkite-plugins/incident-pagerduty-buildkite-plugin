@@ -23,11 +23,23 @@ check_job_failure() {
 # Returns 0 if build is failing, 1 if build is passing
 check_build_failure() {
   local build_url="${BUILDKITE_BUILD_URL:-}"
+  local build_id="${BUILDKITE_BUILD_ID:-}"
+  local org_slug="${BUILDKITE_ORGANIZATION_SLUG:-}"
+  local pipeline_slug="${BUILDKITE_PIPELINE_SLUG:-}"
+  
   # Try multiple token sources: BUILDKITE_AGENT_ACCESS_TOKEN (preferred) or BUILDKITE_API_TOKEN
   local build_api_access_token="${BUILDKITE_AGENT_ACCESS_TOKEN:-${BUILDKITE_API_TOKEN:-}}"
   
-  if [[ -z "${build_url}" ]]; then
-    log_warning "BUILDKITE_BUILD_URL not available, cannot check build status"
+  # Construct API URL - prefer build_url, fallback to constructing from build_id
+  local api_url=""
+  if [[ -n "${build_url}" ]]; then
+    api_url="${build_url}.json"
+  elif [[ -n "${build_id}" && -n "${org_slug}" && -n "${pipeline_slug}" ]]; then
+    # Construct URL from build ID: https://api.buildkite.com/v2/organizations/{org}/pipelines/{pipeline}/builds/{build_id}
+    api_url="https://api.buildkite.com/v2/organizations/${org_slug}/pipelines/${pipeline_slug}/builds/${build_id}"
+    log_debug "Constructed API URL from build ID: ${api_url}"
+  else
+    log_warning "Cannot determine build API URL (need BUILDKITE_BUILD_URL or BUILDKITE_BUILD_ID)"
     return 1
   fi
   
@@ -37,11 +49,11 @@ check_build_failure() {
     return 1
   fi
   
-  log_debug "Checking build status via API: ${build_url}"
+  log_debug "Checking build status via API: ${api_url}"
   
   # Query the Buildkite API for build status
   local build_json
-  if ! build_json=$(curl -s -f -H "Authorization: Bearer ${build_api_access_token}" "${build_url}.json"); then
+  if ! build_json=$(curl -s -f -H "Authorization: Bearer ${build_api_access_token}" "${api_url}"); then
     log_warning "Failed to fetch build status from API"
     return 1
   fi
