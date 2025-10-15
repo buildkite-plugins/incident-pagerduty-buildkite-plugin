@@ -32,6 +32,13 @@ main() {
   # Get configuration
   local integration_key
   integration_key=$(plugin_read_config INTEGRATION_KEY "")
+  
+  # Fallback to INTEGRATION_KEY environment variable if not set via plugin config
+  if [[ -z "${integration_key}" && -n "${INTEGRATION_KEY:-}" ]]; then
+    integration_key="${INTEGRATION_KEY}"
+    log_debug "Using INTEGRATION_KEY from environment"
+  fi
+  
   validate_required_config "integration-key" "${integration_key}"
   
   local check_mode
