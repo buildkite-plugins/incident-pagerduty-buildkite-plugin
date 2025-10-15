@@ -51,7 +51,7 @@ teardown() {
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \
-    "annotate --style error --context pagerduty-incident-* : echo 'Annotation created'"
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
   run "$PWD"/hooks/pre-exit
 
@@ -69,7 +69,7 @@ teardown() {
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \
-    "annotate --style error --context pagerduty-incident-* : echo 'Annotation created'"
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
   run "$PWD"/hooks/pre-exit
 
@@ -86,7 +86,7 @@ teardown() {
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"custom-dedup-key-123\"}"; echo "202"'
   
   stub buildkite-agent \
-    "annotate --style error --context pagerduty-incident-* : echo 'Annotation created'"
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
   run "$PWD"/hooks/pre-exit
 
@@ -101,7 +101,7 @@ teardown() {
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \
-    "annotate --style error --context pagerduty-incident-* : echo 'Annotation created'"
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
   run "$PWD"/hooks/pre-exit
 
@@ -128,7 +128,7 @@ teardown() {
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \
-    "annotate --style error --context pagerduty-incident-* : echo 'Annotation created'"
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
   run "$PWD"/hooks/pre-exit
 
@@ -159,7 +159,7 @@ teardown() {
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \
-    "annotate --style error --context pagerduty-incident-* : echo 'Annotation created'"
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
   run "$PWD"/hooks/pre-exit
 
@@ -178,7 +178,7 @@ teardown() {
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \
-    "annotate --style error --context pagerduty-incident-* : echo 'Annotation created'"
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
   run "$PWD"/hooks/pre-exit
 
@@ -195,7 +195,7 @@ teardown() {
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \
-    "annotate --style warning --context pagerduty-incident-* : echo 'Annotation created'"
+    "annotate --style warning --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
   run "$PWD"/hooks/pre-exit
 
@@ -211,7 +211,7 @@ teardown() {
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \
-    "annotate --style info --context pagerduty-incident-* : echo 'Annotation created'"
+    "annotate --style info --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
   run "$PWD"/hooks/pre-exit
 
@@ -226,7 +226,7 @@ teardown() {
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"error\",\"message\":\"Invalid routing key\"}"; echo "400"'
   
   stub buildkite-agent \
-    "annotate --style warning --context pagerduty-error : echo 'Error annotation created'"
+    "annotate --style warning --context pagerduty-error-abc-123-def : echo 'Error annotation created'"
 
   run "$PWD"/hooks/pre-exit
 
@@ -242,7 +242,7 @@ teardown() {
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \
-    "annotate --style error --context pagerduty-incident-* : echo 'Annotation created'"
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
   run "$PWD"/hooks/pre-exit
 
@@ -283,7 +283,7 @@ teardown() {
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \
-    "annotate --style error --context pagerduty-incident-* : echo 'Annotation created'"
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
   run "$PWD"/hooks/pre-exit
 

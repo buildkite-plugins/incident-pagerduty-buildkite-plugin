@@ -27,7 +27,7 @@ main() {
   log_debug "Incident PagerDuty plugin starting (pre-exit hook)"
   
   # Check dependencies
-  check_dependencies curl
+  check_dependencies curl jq
   
   # Get configuration
   local integration_key
