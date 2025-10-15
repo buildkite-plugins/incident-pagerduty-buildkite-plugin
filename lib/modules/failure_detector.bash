@@ -53,8 +53,14 @@ check_build_failure() {
   
   # Query the Buildkite API for build status
   local build_json
-  if ! build_json=$(curl -s -f -H "Authorization: Bearer ${build_api_access_token}" "${api_url}"); then
-    log_warning "Failed to fetch build status from API"
+  local curl_exit_code
+  build_json=$(curl -s -f -H "Authorization: Bearer ${build_api_access_token}" "${api_url}" 2>&1)
+  curl_exit_code=$?
+  
+  if [[ ${curl_exit_code} -ne 0 ]]; then
+    log_warning "Failed to fetch build status from API (curl exit code: ${curl_exit_code})"
+    log_debug "API URL: ${api_url}"
+    log_debug "Response: ${build_json}"
     return 1
   fi
   
