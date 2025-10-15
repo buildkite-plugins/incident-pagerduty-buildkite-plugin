@@ -59,8 +59,8 @@ check_build_failure() {
   
   if [[ ${curl_exit_code} -ne 0 ]]; then
     log_warning "Failed to fetch build status from API (curl exit code: ${curl_exit_code})"
-    log_debug "API URL: ${api_url}"
-    log_debug "Response: ${build_json}"
+    log_info "API URL: ${api_url}"
+    log_info "Error response: ${build_json}"
     return 1
   fi
   
