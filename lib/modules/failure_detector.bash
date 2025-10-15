@@ -30,12 +30,23 @@ check_build_failure() {
   # Try multiple token sources: BUILDKITE_AGENT_ACCESS_TOKEN (preferred) or BUILDKITE_API_TOKEN
   local build_api_access_token="${BUILDKITE_AGENT_ACCESS_TOKEN:-${BUILDKITE_API_TOKEN:-}}"
   
-  # Construct API URL - prefer build_url, fallback to constructing from build_id
+  # Construct API URL - convert web URL to API URL or construct from build_id
   local api_url=""
-  if [[ -n "${build_url}" ]]; then
-    api_url="${build_url}.json"
+  if [[ -n "${build_url}" && -n "${org_slug}" && -n "${pipeline_slug}" ]]; then
+    # Extract build number from web URL: https://buildkite.com/{org}/{pipeline}/builds/{number}
+    local build_number
+    build_number=$(echo "${build_url}" | grep -o '/builds/[0-9]*' | grep -o '[0-9]*')
+    
+    if [[ -n "${build_number}" ]]; then
+      # Convert to API URL format
+      api_url="https://api.buildkite.com/v2/organizations/${org_slug}/pipelines/${pipeline_slug}/builds/${build_number}"
+      log_debug "Converted web URL to API URL: ${api_url}"
+    else
+      log_warning "Could not extract build number from BUILD_URL: ${build_url}"
+      return 1
+    fi
   elif [[ -n "${build_id}" && -n "${org_slug}" && -n "${pipeline_slug}" ]]; then
-    # Construct URL from build ID: https://api.buildkite.com/v2/organizations/{org}/pipelines/{pipeline}/builds/{build_id}
+    # Construct URL from build ID (UUID)
     api_url="https://api.buildkite.com/v2/organizations/${org_slug}/pipelines/${pipeline_slug}/builds/${build_id}"
     log_debug "Constructed API URL from build ID: ${api_url}"
   else
