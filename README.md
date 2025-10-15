@@ -54,11 +54,13 @@ The PagerDuty integration key for your service. This is a 32-character hex strin
 
 What to check for failures. Options:
 
-- `job` (default) - Create incident when the current job fails
+- `job` (default) - Create incident when the current job fails (requires a `command` in your step)
 - `build` - Create incident when the build is failing (detects adjacent job failures while jobs are still running)
-- `both` - Check both job and build status
+- `both` - Check both job and build status (requires a `command` in your step)
 
 **Default:** `job`
+
+**Note:** The `job` and `both` modes require a `command` in your pipeline step because they monitor the command's exit status.
 
 ### `severity` (string)
 
@@ -169,10 +171,16 @@ steps:
 
 ## How It Works
 
-1. **Hook Execution**: The plugin runs as a `post-command` or `pre-exit` hook after your build step completes
+1. **Hook Execution**: The plugin runs as a `pre-exit` hook at the end of your job's lifecycle
 2. **Failure Detection**: Checks the configured status (job, build, or both) for failures
 3. **Incident Creation**: If a failure is detected, sends an event to PagerDuty's Events API v2
 4. **Annotation**: Creates a Buildkite annotation with incident details and a direct link to the PagerDuty incident
+
+### Important: Command Requirement
+
+**The plugin requires a `command` in your pipeline step** when using `check: job` or `check: both` modes. This is because the plugin monitors the command's exit status to detect failures.
+
+**Note:** If using `check: build` mode only, a command is technically optional since the plugin only checks build-level status via the API. However, this is an uncommon use case.
 
 ## Requirements
 

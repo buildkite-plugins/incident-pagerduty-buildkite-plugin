@@ -41,6 +41,9 @@ main() {
   
   validate_required_config "integration-key" "${integration_key}"
   
+  # Debug: log integration key length (not the actual value for security)
+  log_debug "Integration key length: ${#integration_key}"
+  
   local check_mode
   check_mode=$(plugin_read_config CHECK "job")
   

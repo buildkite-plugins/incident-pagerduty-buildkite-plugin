@@ -23,7 +23,8 @@ check_job_failure() {
 # Returns 0 if build is failing, 1 if build is passing
 check_build_failure() {
   local build_url="${BUILDKITE_BUILD_URL:-}"
-  local build_api_access_token="${BUILDKITE_AGENT_ACCESS_TOKEN:-}"
+  # Try multiple token sources: BUILDKITE_AGENT_ACCESS_TOKEN (preferred) or BUILDKITE_API_TOKEN
+  local build_api_access_token="${BUILDKITE_AGENT_ACCESS_TOKEN:-${BUILDKITE_API_TOKEN:-}}"
   
   if [[ -z "${build_url}" ]]; then
     log_warning "BUILDKITE_BUILD_URL not available, cannot check build status"
@@ -31,7 +32,8 @@ check_build_failure() {
   fi
   
   if [[ -z "${build_api_access_token}" ]]; then
-    log_warning "BUILDKITE_AGENT_ACCESS_TOKEN not available, cannot check build status"
+    log_warning "No API token available (BUILDKITE_AGENT_ACCESS_TOKEN or BUILDKITE_API_TOKEN), cannot check build status"
+    log_info "To enable build-level failure detection, ensure your agent has API access enabled"
     return 1
   fi
   

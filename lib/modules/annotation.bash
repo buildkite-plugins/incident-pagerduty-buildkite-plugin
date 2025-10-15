@@ -51,9 +51,11 @@ EOF
   
   log_debug "Creating Buildkite annotation"
   
-  # Create the annotation using buildkite-agent
+  # Create the annotation using buildkite-agent with unique context per job
   if command -v buildkite-agent >/dev/null 2>&1; then
-    echo "${annotation}" | buildkite-agent annotate --style "${style}" --context "pagerduty-incident"
+    local job_id="${BUILDKITE_JOB_ID:-unknown}"
+    local context="pagerduty-incident-${job_id}"
+    echo "${annotation}" | buildkite-agent annotate --style "${style}" --context "${context}"
     log_success "Buildkite annotation created"
   else
     log_warning "buildkite-agent command not found, skipping annotation"
@@ -82,7 +84,9 @@ EOF
 )
   
   if command -v buildkite-agent >/dev/null 2>&1; then
-    echo "${annotation}" | buildkite-agent annotate --style "warning" --context "pagerduty-error"
+    local job_id="${BUILDKITE_JOB_ID:-unknown}"
+    local context="pagerduty-error-${job_id}"
+    echo "${annotation}" | buildkite-agent annotate --style "warning" --context "${context}"
   else
     echo ""
     echo "--- :warning: PagerDuty Plugin Error"
