@@ -255,11 +255,12 @@ teardown() {
   export BUILDKITE_COMMAND_EXIT_STATUS='0'
   export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_CHECK='build'
   unset BUILDKITE_BUILD_URL
+  unset BUILDKITE_BUILD_ID
 
   run "$PWD"/hooks/pre-exit
 
   assert_success
-  assert_output --partial 'BUILDKITE_BUILD_URL not available'
+  assert_output --partial 'Cannot determine build API URL'
 }
 
 @test "Build check handles missing access token" {
