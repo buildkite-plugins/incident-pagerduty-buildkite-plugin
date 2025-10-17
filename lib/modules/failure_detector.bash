@@ -27,8 +27,9 @@ check_build_failure() {
   local org_slug="${BUILDKITE_ORGANIZATION_SLUG:-}"
   local pipeline_slug="${BUILDKITE_PIPELINE_SLUG:-}"
   
-  # Try multiple token sources: BUILDKITE_AGENT_ACCESS_TOKEN (preferred) or BUILDKITE_API_TOKEN
-  local build_api_access_token="${BUILDKITE_AGENT_ACCESS_TOKEN:-${BUILDKITE_API_TOKEN:-}}"
+  # Try multiple token sources: BUILDKITE_API_TOKEN (preferred for REST API) or BUILDKITE_AGENT_ACCESS_TOKEN
+  # Note: BUILDKITE_AGENT_ACCESS_TOKEN is for GraphQL API and won't work with REST API
+  local build_api_access_token="${BUILDKITE_API_TOKEN:-${BUILDKITE_AGENT_ACCESS_TOKEN:-}}"
   
   # Construct API URL - convert web URL to API URL or construct from build_id
   local api_url=""
@@ -55,8 +56,11 @@ check_build_failure() {
   fi
   
   if [[ -z "${build_api_access_token}" ]]; then
-    log_warning "No API token available (BUILDKITE_AGENT_ACCESS_TOKEN or BUILDKITE_API_TOKEN), cannot check build status"
-    log_info "To enable build-level failure detection, ensure your agent has API access enabled"
+    log_warning "Build-level failure detection requires BUILDKITE_API_TOKEN"
+    log_info "The 'check: build' feature is optional and requires API access"
+    log_info "To use this feature, add BUILDKITE_API_TOKEN to your pipeline secrets"
+    log_info "Note: This gives API access to your organization - use with caution"
+    log_info "Alternative: Use 'check: job' (default) which works without API access"
     return 1
   fi
   
@@ -65,7 +69,8 @@ check_build_failure() {
   # Query the Buildkite API for build status
   local build_json
   local curl_exit_code
-  build_json=$(curl -s -f -H "Authorization: Bearer ${build_api_access_token}" "${api_url}" 2>&1)
+  # Use -v for verbose output to see what's happening, capture stderr
+  build_json=$(curl -s -f -v -H "Authorization: Bearer ${build_api_access_token}" "${api_url}" 2>&1)
   curl_exit_code=$?
   
   if [[ ${curl_exit_code} -ne 0 ]]; then
@@ -95,33 +100,22 @@ check_build_failure() {
 }
 
 # Main failure detection logic based on check mode
-# Args: $1 - check mode (job, build, or both)
+# Args: $1 - check mode (job or build)
 # Returns 0 if failure detected, 1 if no failure
 detect_failure() {
   local check_mode="${1:-job}"
   
-  log_debug "Running failure detection with mode: ${check_mode}"
+  log_debug "Checking for failures (mode: ${check_mode})"
   
   case "${check_mode}" in
     job)
       check_job_failure
-      return $?
       ;;
     build)
       check_build_failure
-      return $?
-      ;;
-    both)
-      if check_job_failure; then
-        return 0
-      fi
-      if check_build_failure; then
-        return 0
-      fi
-      return 1
       ;;
     *)
-      log_error "Invalid check mode: ${check_mode}. Must be 'job', 'build', or 'both'"
+      log_error "Invalid check mode: ${check_mode}. Must be 'job' or 'build'"
       return 1
       ;;
   esac

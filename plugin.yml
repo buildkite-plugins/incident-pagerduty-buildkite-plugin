@@ -11,11 +11,10 @@ configuration:
       description: "PagerDuty integration key for Events API v2. This is a 32-character hex string found in your service's integrations."
     check:
       type: string
-      description: "What to check for failures: 'build', 'job', or 'both'. Defaults to 'job'."
+      description: "What to check for failures: 'job' (this step) or 'build' (any step in build). Defaults to 'job'."
       enum:
         - build
         - job
-        - both
       default: job
     severity:
       type: string

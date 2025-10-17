@@ -9,6 +9,7 @@ setup() {
   # Set common variables for all tests
   export BUILDKITE="true"
   export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_INTEGRATION_KEY='95ed048753ef450ac065962fdaee1d1c'
+  export BUILDKITE_ORGANIZATION_SLUG='test-org'
   export BUILDKITE_PIPELINE_SLUG='test-pipeline'
   export BUILDKITE_BUILD_NUMBER='123'
   export BUILDKITE_BUILD_URL='https://buildkite.com/test-org/test-pipeline/builds/123'
@@ -121,10 +122,10 @@ teardown() {
 @test "Check mode 'build' detects build failure" {
   export BUILDKITE_COMMAND_EXIT_STATUS='0'
   export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_CHECK='build'
-  export BUILDKITE_AGENT_ACCESS_TOKEN='test-token'
+  export BUILDKITE_API_TOKEN='test-token'
   
   stub curl \
-    '-s -f -H "Authorization: Bearer test-token" https://buildkite.com/test-org/test-pipeline/builds/123.json : echo "{\"state\":\"failed\"}"' \
+    '-s -f -v -H "Authorization: Bearer test-token" https://api.buildkite.com/v2/organizations/test-org/pipelines/test-pipeline/builds/123 : echo "{\"state\":\"failed\"}"' \
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \
@@ -140,10 +141,10 @@ teardown() {
 @test "Check mode 'build' skips when build is passing" {
   export BUILDKITE_COMMAND_EXIT_STATUS='0'
   export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_CHECK='build'
-  export BUILDKITE_AGENT_ACCESS_TOKEN='test-token'
+  export BUILDKITE_API_TOKEN='test-token'
   
   stub curl \
-    '-s -f -H "Authorization: Bearer test-token" https://buildkite.com/test-org/test-pipeline/builds/123.json : echo "{\"state\":\"passed\"}"'
+    '-s -f -v -H "Authorization: Bearer test-token" https://api.buildkite.com/v2/organizations/test-org/pipelines/test-pipeline/builds/123 : echo "{\"state\":\"passed\"}"'
 
   run "$PWD"/hooks/pre-exit
 
@@ -151,41 +152,6 @@ teardown() {
   refute_output --partial 'creating PagerDuty incident'
 }
 
-@test "Check mode 'both' detects job failure" {
-  export BUILDKITE_COMMAND_EXIT_STATUS='1'
-  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_CHECK='both'
-  
-  stub curl \
-    '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
-  
-  stub buildkite-agent \
-    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
-
-  run "$PWD"/hooks/pre-exit
-
-  assert_success
-  assert_output --partial 'Job failure detected'
-  assert_output --partial 'creating PagerDuty incident'
-}
-
-@test "Check mode 'both' detects build failure when job passes" {
-  export BUILDKITE_COMMAND_EXIT_STATUS='0'
-  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_CHECK='both'
-  export BUILDKITE_AGENT_ACCESS_TOKEN='test-token'
-  
-  stub curl \
-    '-s -f -H "Authorization: Bearer test-token" https://buildkite.com/test-org/test-pipeline/builds/123.json : echo "{\"state\":\"failing\"}"' \
-    '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
-  
-  stub buildkite-agent \
-    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
-
-  run "$PWD"/hooks/pre-exit
-
-  assert_success
-  assert_output --partial 'Build failure detected'
-  assert_output --partial 'creating PagerDuty incident'
-}
 
 @test "Severity 'warning' uses warning annotation style" {
   export BUILDKITE_COMMAND_EXIT_STATUS='1'
@@ -266,21 +232,21 @@ teardown() {
 @test "Build check handles missing access token" {
   export BUILDKITE_COMMAND_EXIT_STATUS='0'
   export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_CHECK='build'
-  unset BUILDKITE_AGENT_ACCESS_TOKEN
+  unset BUILDKITE_API_TOKEN
 
   run "$PWD"/hooks/pre-exit
 
   assert_success
-  assert_output --partial 'No API token available'
+  assert_output --partial 'Build-level failure detection requires BUILDKITE_API_TOKEN'
 }
 
 @test "Detects canceled build state as failure" {
   export BUILDKITE_COMMAND_EXIT_STATUS='0'
   export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_CHECK='build'
-  export BUILDKITE_AGENT_ACCESS_TOKEN='test-token'
+  export BUILDKITE_API_TOKEN='test-token'
   
   stub curl \
-    '-s -f -H "Authorization: Bearer test-token" https://buildkite.com/test-org/test-pipeline/builds/123.json : echo "{\"state\":\"canceled\"}"' \
+    '-s -f -v -H "Authorization: Bearer test-token" https://api.buildkite.com/v2/organizations/test-org/pipelines/test-pipeline/builds/123 : echo "{\"state\":\"canceled\"}"' \
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \

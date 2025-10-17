@@ -1,11 +1,11 @@
 # Incident PagerDuty Buildkite Plugin
 
-Automatically create PagerDuty incidents when Buildkite builds or jobs fail. This plugin runs as a `post-command` or `pre-exit` hook to detect failures and trigger incident creation via the [PagerDuty Events API v2](https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgw-events-api-v2-overview).
+Automatically create PagerDuty incidents when Buildkite builds or jobs fail. 
 
 ## Features
 
 - 🚨 **Automatic incident creation** when builds or jobs fail
-- 🎯 **Flexible failure detection** - check build status, job status, or both
+- 🎯 **Flexible failure detection** - check build status or job status
 - 📝 **Rich incident details** - includes pipeline, branch, build URL, job info, and timestamps
 - 🔗 **Buildkite annotations** - creates annotations with direct links to PagerDuty incidents
 - 🔑 **Secure credential handling** - uses environment variables for integration keys
@@ -56,11 +56,10 @@ What to check for failures. Options:
 
 - `job` (default) - Create incident when the current job fails (requires a `command` in your step)
 - `build` - Create incident when the build is failing (detects adjacent job failures while jobs are still running)
-- `both` - Check both job and build status (requires a `command` in your step)
 
 **Default:** `job`
 
-**Note:** The `job` and `both` modes require a `command` in your pipeline step because they monitor the command's exit status.
+**Note:** The `job` mode requires a `command` in your pipeline step because it monitors the command's exit status.
 
 ### `severity` (string)
 
@@ -114,24 +113,6 @@ steps:
           check: build
 ```
 
-### Check both build and job
-
-Create incident if either the job or build fails:
-
-```yaml
-steps:
-  - label: "🔍 Integration tests"
-    command: "npm run test:integration"
-    plugins:
-      - aws-sm#v1.0.0:
-          secrets:
-            - name: PAGERDUTY_INTEGRATION_KEY
-              key: pagerduty/integration-key
-      - incident-pagerduty#v1.0.0:
-          integration-key: "${PAGERDUTY_INTEGRATION_KEY}"
-          check: both
-```
-
 ### Custom severity
 
 Set incident severity to critical for production deployments:
@@ -172,13 +153,13 @@ steps:
 ## How It Works
 
 1. **Hook Execution**: The plugin runs as a `pre-exit` hook at the end of your job's lifecycle
-2. **Failure Detection**: Checks the configured status (job, build, or both) for failures
+2. **Failure Detection**: Checks the configured status (job or build) for failures
 3. **Incident Creation**: If a failure is detected, sends an event to PagerDuty's Events API v2
 4. **Annotation**: Creates a Buildkite annotation with incident details and a direct link to the PagerDuty incident
 
 ### Important: Command Requirement
 
-**The plugin requires a `command` in your pipeline step** when using `check: job` or `check: both` modes. This is because the plugin monitors the command's exit status to detect failures.
+**The plugin requires a `command` in your pipeline step** when using `check: job` mode. This is because the plugin monitors the command's exit status to detect failures.
 
 **Note:** If using `check: build` mode only, a command is technically optional since the plugin only checks build-level status via the API. However, this is an uncommon use case.
 
