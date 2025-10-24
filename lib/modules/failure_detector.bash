@@ -27,8 +27,6 @@ check_build_failure() {
   local org_slug="${BUILDKITE_ORGANIZATION_SLUG:-}"
   local pipeline_slug="${BUILDKITE_PIPELINE_SLUG:-}"
   
-  # Try multiple token sources: BUILDKITE_API_TOKEN (preferred for REST API) or BUILDKITE_AGENT_ACCESS_TOKEN
-  # Note: BUILDKITE_AGENT_ACCESS_TOKEN is for GraphQL API and won't work with REST API
   local build_api_access_token="${BUILDKITE_API_TOKEN:-${BUILDKITE_AGENT_ACCESS_TOKEN:-}}"
   
   # Construct API URL - convert web URL to API URL or construct from build_id

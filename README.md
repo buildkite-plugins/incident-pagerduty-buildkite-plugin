@@ -59,7 +59,10 @@ What to check for failures. Options:
 
 **Default:** `job`
 
-**Note:** The `job` mode requires a `command` in your pipeline step because it monitors the command's exit status.
+**Note:** 
+
+1. The `job` mode requires a `command` in your pipeline step because it monitors the command's exit status.
+2. The `build` mode requires a `BUILDKITE_API_TOKEN` in your pipeline secrets because it monitors the build's status via the Buildkite API.
 
 ### `severity` (string)
 
@@ -70,10 +73,6 @@ PagerDuty incident severity level. Options: `critical`, `error`, `warning`, `inf
 ### `dedup-key` (string)
 
 Custom deduplication key for the incident. If not provided, a key will be auto-generated based on the pipeline, build number, and job ID.
-
-### `custom-details` (object)
-
-Additional custom details to include in the PagerDuty incident payload. This can be any key-value pairs you want to attach to the incident.
 
 ## Examples
 
@@ -108,6 +107,8 @@ steps:
           secrets:
             - path: secret/pagerduty/integration-key
               field: PAGERDUTY_INTEGRATION_KEY
+            - path: secret/buildkite/api-token
+              field: BUILDKITE_API_TOKEN
       - incident-pagerduty#v1.0.0:
           integration-key: "${PAGERDUTY_INTEGRATION_KEY}"
           check: build
@@ -128,26 +129,7 @@ steps:
       - incident-pagerduty#v1.0.0:
           integration-key: "${PAGERDUTY_INTEGRATION_KEY}"
           severity: critical
-```
-
-### With custom details
-
-Include additional context in the incident:
-
-```yaml
-steps:
-  - label: "📦 Build application"
-    command: "make build"
-    plugins:
-      - secrets#v1.0.0:
-          env:
-            PAGERDUTY_INTEGRATION_KEY: pagerduty-integration-key
-      - incident-pagerduty#v1.0.0:
-          integration-key: "${PAGERDUTY_INTEGRATION_KEY}"
-          custom-details:
-            environment: production
-            team: platform
-            service: api-gateway
+          # check: job  # default
 ```
 
 ## How It Works

@@ -28,10 +28,11 @@ configuration:
     dedup-key:
       type: string
       description: "Custom deduplication key. If not provided, will be auto-generated based on build/job details."
-    custom-details:
-      type: object
-      description: "Additional custom details to include in the PagerDuty incident."
-      additionalProperties: true
+    # TODO: Add custom-details if requested by users (code is setup for it)
+    # custom-details:
+    #   type: object
+    #   description: "Additional custom details to include in the PagerDuty incident."
+    #   additionalProperties: true
   required:
     - integration-key
   additionalProperties: false
