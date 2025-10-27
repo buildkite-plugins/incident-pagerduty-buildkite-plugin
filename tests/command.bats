@@ -125,7 +125,7 @@ teardown() {
   export BUILDKITE_API_TOKEN='test-token'
   
   stub curl \
-    '-s -f -v -H "Authorization: Bearer test-token" https://api.buildkite.com/v2/organizations/test-org/pipelines/test-pipeline/builds/123 : echo "{\"state\":\"failed\"}"' \
+    '-s -S -f -H "Authorization: Bearer test-token" https://api.buildkite.com/v2/organizations/test-org/pipelines/test-pipeline/builds/123 : echo "{\"state\":\"failed\"}"' \
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \
@@ -144,7 +144,7 @@ teardown() {
   export BUILDKITE_API_TOKEN='test-token'
   
   stub curl \
-    '-s -f -v -H "Authorization: Bearer test-token" https://api.buildkite.com/v2/organizations/test-org/pipelines/test-pipeline/builds/123 : echo "{\"state\":\"passed\"}"'
+    '-s -S -f -H "Authorization: Bearer test-token" https://api.buildkite.com/v2/organizations/test-org/pipelines/test-pipeline/builds/123 : echo "{\"state\":\"passed\"}"'
 
   run "$PWD"/hooks/pre-exit
 
@@ -246,7 +246,7 @@ teardown() {
   export BUILDKITE_API_TOKEN='test-token'
   
   stub curl \
-    '-s -f -v -H "Authorization: Bearer test-token" https://api.buildkite.com/v2/organizations/test-org/pipelines/test-pipeline/builds/123 : echo "{\"state\":\"canceled\"}"' \
+    '-s -S -f -H "Authorization: Bearer test-token" https://api.buildkite.com/v2/organizations/test-org/pipelines/test-pipeline/builds/123 : echo "{\"state\":\"canceled\"}"' \
     '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
   
   stub buildkite-agent \

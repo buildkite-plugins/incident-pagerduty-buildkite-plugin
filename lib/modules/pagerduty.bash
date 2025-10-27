@@ -105,9 +105,7 @@ create_incident() {
   local payload
   payload=$(build_incident_payload "${integration_key}" "${severity}" "${dedup_key}" "${custom_details}")
   
-  # Log payload for debugging (will be redacted by Buildkite)
   log_info "Sending payload to PagerDuty..."
-  log_debug "PagerDuty payload: ${payload}"
   
   # Send the request to PagerDuty
   local response

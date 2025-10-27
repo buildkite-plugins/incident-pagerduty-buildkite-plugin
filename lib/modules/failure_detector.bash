@@ -67,8 +67,8 @@ check_build_failure() {
   # Query the Buildkite API for build status
   local build_json
   local curl_exit_code
-  # Use -v for verbose output to see what's happening, capture stderr
-  build_json=$(curl -s -f -v -H "Authorization: Bearer ${build_api_access_token}" "${api_url}" 2>&1)
+  # Query quietly but capture stderr for error context
+  build_json=$(curl -s -S -f -H "Authorization: Bearer ${build_api_access_token}" "${api_url}" 2>&1)
   curl_exit_code=$?
   
   if [[ ${curl_exit_code} -ne 0 ]]; then

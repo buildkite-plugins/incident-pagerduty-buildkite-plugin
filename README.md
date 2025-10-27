@@ -1,6 +1,6 @@
 # Incident PagerDuty Buildkite Plugin
 
-Automatically create PagerDuty incidents when Buildkite builds or jobs fail. 
+Automatically create PagerDuty incidents when Buildkite builds or jobs fail.
 
 ## Features
 
@@ -14,6 +14,8 @@ Automatically create PagerDuty incidents when Buildkite builds or jobs fail.
 ## Authentication
 
 The plugin requires a PagerDuty integration key to create incidents via the `integration-key`. Use your preferred secret management tool to store the key.
+
+> **Tip:** If you omit `integration-key` from the plugin configuration, the plugin will automatically read the value from the `INTEGRATION_KEY` environment variable (handy when a previous step exports it).
 
 ```yaml
 steps:
@@ -46,7 +48,7 @@ steps:
 
 ### `integration-key` (string)
 
-The PagerDuty integration key for your service. This is a 32-character hex string (e.g., `95ed048753ef450ac065962fdgse1d1c`) that routes incidents to the correct service.
+The PagerDuty integration key for your service. This is a 32-character hex string (e.g., `95ed048753ef450ac065962fdgse1d1c`) that routes incidents to the correct service. If omitted, the plugin falls back to the `INTEGRATION_KEY` environment variable when present.
 
 ## Optional Configuration
 
@@ -59,7 +61,7 @@ What to check for failures. Options:
 
 **Default:** `job`
 
-**Note:** 
+**Note:**
 
 1. The `job` mode requires a `command` in your pipeline step because it monitors the command's exit status.
 2. The `build` mode requires a `BUILDKITE_API_TOKEN` in your pipeline secrets because it monitors the build's status via the Buildkite API.
