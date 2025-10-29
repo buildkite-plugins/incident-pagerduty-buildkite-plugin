@@ -4,6 +4,32 @@
 
 set -euo pipefail
 
+# Determine if a job exit status should be treated as a soft-fail (no incident)
+# Returns 0 if the exit status is allowed to soft-fail, 1 otherwise
+is_soft_fail_exit_status() {
+  local exit_status="$1"
+  local allow_all="${INCIDENT_PAGERDUTY_SOFT_FAIL_ALLOW_ALL:-false}"
+
+  if [[ "${allow_all}" == "true" ]]; then
+    return 0
+  fi
+
+  local statuses_string="${INCIDENT_PAGERDUTY_SOFT_FAIL_STATUS_LIST:-}"
+  if [[ -z "${statuses_string}" ]]; then
+    return 1
+  fi
+
+  local IFS=' '
+  read -r -a soft_statuses <<< "${statuses_string}"
+  for status in "${soft_statuses[@]}"; do
+    if [[ -n "${status}" && "${exit_status}" == "${status}" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 # Check if the current job has failed
 # Returns 0 if job failed, 1 if job passed
 check_job_failure() {
@@ -12,6 +38,11 @@ check_job_failure() {
   log_debug "Job exit status: ${exit_status}"
   
   if [[ "${exit_status}" != "0" ]]; then
+    if is_soft_fail_exit_status "${exit_status}"; then
+      log_info "Job exit status ${exit_status} is configured as soft-fail; skipping incident"
+      return 1
+    fi
+
     log_info "Job failure detected (exit status: ${exit_status})"
     return 0
   fi

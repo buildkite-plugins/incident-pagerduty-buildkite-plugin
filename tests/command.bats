@@ -95,6 +95,29 @@ teardown() {
   assert_output --partial 'creating PagerDuty incident'
 }
 
+@test "Soft-fail exit status list skips incident" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='42'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_SOFT_FAIL_STATUSES_0='42'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_SOFT_FAIL_STATUSES_1='99'
+
+  run "$PWD"/hooks/pre-exit
+
+  assert_success
+  assert_output --partial 'Job exit status 42 is configured as soft-fail'
+  refute_output --partial 'creating PagerDuty incident'
+}
+
+@test "Soft-fail wildcard skips incident" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='7'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_SOFT_FAIL_STATUSES='*'
+
+  run "$PWD"/hooks/pre-exit
+
+  assert_success
+  assert_output --partial 'Job exit status 7 is configured as soft-fail'
+  refute_output --partial 'creating PagerDuty incident'
+}
+
 @test "Check mode defaults to job" {
   export BUILDKITE_COMMAND_EXIT_STATUS='1'
   

@@ -29,11 +29,15 @@ configuration:
     dedup-key:
       type: string
       description: "Custom deduplication key. If not provided, will be auto-generated based on build/job details."
-    # TODO: Add custom-details if requested by users (code is setup for it)
-    # custom-details:
-    #   type: object
-    #   description: "Additional custom details to include in the PagerDuty incident."
-    #   additionalProperties: true
+    soft-fail-statuses:
+      description: "Exit statuses that should be treated as soft-fail (no incident). Accepts '*' or a list of exit codes."
+      oneOf:
+        - type: string
+          enum:
+            - "*"
+        - type: array
+          items:
+            type: string
   required:
     - integration-key
   additionalProperties: false

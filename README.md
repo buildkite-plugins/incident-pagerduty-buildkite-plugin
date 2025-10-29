@@ -11,11 +11,13 @@ Automatically create PagerDuty incidents when Buildkite builds or jobs fail.
 - 🔑 **Secure credential handling** - uses environment variables for integration keys
 - ⚙️ **Customizable severity levels** - critical, error, warning, or info
 
-## Authentication
+## Required Configuration
 
-The plugin requires a PagerDuty integration key to create incidents via the `integration-key`. Use your preferred secret management tool to store the key.
+### `integration-key` (string)
 
-> **Tip:** If you omit `integration-key` from the plugin configuration, the plugin will automatically read the value from the `INTEGRATION_KEY` environment variable (handy when a previous step exports it).
+The PagerDuty integration key for your service. This is a 32-character hex string (e.g., `95ed048753ef450ac065962fdgse1d1c`) that routes incidents to the correct service. 
+
+If you need to create one, follow PagerDuty's guide to [generate a new integration key](https://support.pagerduty.com/main/docs/services-and-integrations#generate-a-new-integration-key). Use your preferred secret management tool to store the key securely.
 
 ```yaml
 steps:
@@ -44,12 +46,6 @@ steps:
             PAGERDUTY_INTEGRATION_KEY: /pagerduty/integration-key
 ```
 
-## Required Configuration
-
-### `integration-key` (string)
-
-The PagerDuty integration key for your service. This is a 32-character hex string (e.g., `95ed048753ef450ac065962fdgse1d1c`) that routes incidents to the correct service. If omitted, the plugin falls back to the `INTEGRATION_KEY` environment variable when present.
-
 ## Optional Configuration
 
 ### `check` (string)
@@ -76,28 +72,34 @@ PagerDuty incident severity level. Options: `critical`, `error`, `warning`, `inf
 
 Custom deduplication key for the incident. If not provided, a key will be auto-generated based on the pipeline, build number, and job ID.
 
-## Examples
+### `soft-fail-statuses` (string | array)
 
-### Check job status
+Exit statuses that should be treated as soft-fail for job-level detection. When the current step exits with one of these statuses (or any status when set to "*") , no incident will be created for `check: job`.
 
-Minimal configuration:
+**Applies to:** `check: job` only. Build-level detection ignores this setting.
+
+### Complete Examples
+
+#### Job failure detection (`check: job`)
 
 ```yaml
 steps:
-  - label: "🧪 Run tests"
-    command: "npm test"
+  - label: "🧪 Tests"
+    command: "./run-tests.sh"
     plugins:
       - secrets#v1.0.0:
           env:
             PAGERDUTY_INTEGRATION_KEY: pagerduty-integration-key
       - incident-pagerduty#v1.0.0:
           integration-key: "${PAGERDUTY_INTEGRATION_KEY}"
+          soft-fail-statuses: ["42", "123"] # or "*" for any status
+          severity: warning
           check: job
 ```
 
-### Check build status
+#### Build failure detection (`check: build`)
 
-Create incident when the build is failing (useful for detecting adjacent job failures):
+> Requires `BUILDKITE_API_TOKEN` to be available in the environment (for example via a secrets plugin).
 
 ```yaml
 steps:
@@ -113,25 +115,9 @@ steps:
               field: BUILDKITE_API_TOKEN
       - incident-pagerduty#v1.0.0:
           integration-key: "${PAGERDUTY_INTEGRATION_KEY}"
-          check: build
-```
-
-### Custom severity
-
-Set incident severity to critical for production deployments:
-
-```yaml
-steps:
-  - label: "🚨 Production deployment"
-    command: "./deploy-prod.sh"
-    plugins:
-      - aws-ssm#v1.0.0:
-          parameters:
-            PAGERDUTY_INTEGRATION_KEY: /pagerduty/integration-key
-      - incident-pagerduty#v1.0.0:
-          integration-key: "${PAGERDUTY_INTEGRATION_KEY}"
+          dedup-key: "custom-dedup-key-123"
           severity: critical
-          # check: job  # default
+          check: build
 ```
 
 ## How It Works

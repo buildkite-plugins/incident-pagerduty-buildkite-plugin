@@ -46,19 +46,38 @@ main() {
   
   local check_mode
   check_mode=$(plugin_read_config CHECK "job")
-  
   local severity
   severity=$(plugin_read_config SEVERITY "error")
-  
   local dedup_key
   dedup_key=$(plugin_read_config DEDUP_KEY "")
-  
-  # TODO: Handle custom_details object if needed
-  # For now, we'll skip custom details parsing
+
+  local soft_fail_allow_all="false"
+  local soft_fail_statuses_list=()
+
+  if plugin_read_list_into_result SOFT_FAIL_STATUSES; then
+    for value in "${result[@]}"; do
+      if [[ "${value}" == "*" ]]; then
+        soft_fail_allow_all="true"
+      elif [[ -n "${value}" ]]; then
+        soft_fail_statuses_list+=("${value}")
+      fi
+    done
+  fi
+
+  export INCIDENT_PAGERDUTY_SOFT_FAIL_ALLOW_ALL="${soft_fail_allow_all}"
+  export INCIDENT_PAGERDUTY_SOFT_FAIL_STATUS_LIST="${soft_fail_statuses_list[*]}"
   
   log_debug "Configuration loaded:"
   log_debug "  check: ${check_mode}"
   log_debug "  severity: ${severity}"
+  log_debug "  dedup_key: ${dedup_key:-<auto>}"
+  if [[ "${soft_fail_allow_all}" == "true" ]]; then
+    log_debug "  soft_fail_statuses: *"
+  elif [[ ${#soft_fail_statuses_list[@]} -gt 0 ]]; then
+    log_debug "  soft_fail_statuses: ${soft_fail_statuses_list[*]}"
+  else
+    log_debug "  soft_fail_statuses: <none>"
+  fi
   
   # Detect failures based on check mode
   if detect_failure "${check_mode}"; then
