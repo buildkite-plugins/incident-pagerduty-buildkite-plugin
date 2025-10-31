@@ -44,6 +44,8 @@ steps:
       - aws-ssm#v1.0.0:                    # AWS SSM Parameter Store
           parameters:
             PAGERDUTY_INTEGRATION_KEY: /pagerduty/integration-key
+      commands: "./run-tests.sh"
+        
 ```
 
 ## Optional Configuration
