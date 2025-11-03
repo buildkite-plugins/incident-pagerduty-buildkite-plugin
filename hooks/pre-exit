@@ -1,0 +1,112 @@
+#!/bin/bash
+
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=lib/shared.bash
+. "$DIR/../lib/shared.bash"
+
+# shellcheck source=lib/plugin.bash
+. "$DIR/../lib/plugin.bash"
+
+# Load feature modules
+# shellcheck source=lib/modules/failure_detector.bash
+. "$DIR/../lib/modules/failure_detector.bash"
+
+# shellcheck source=lib/modules/pagerduty.bash
+. "$DIR/../lib/modules/pagerduty.bash"
+
+# shellcheck source=lib/modules/annotation.bash
+. "$DIR/../lib/modules/annotation.bash"
+
+main() {
+  # Set up error reporting and debug mode
+  enable_debug_if_requested
+  
+  log_debug "Incident PagerDuty plugin starting (pre-exit hook)"
+  
+  # Check dependencies
+  check_dependencies curl jq
+  
+  # Get configuration
+  local integration_key
+  integration_key=$(plugin_read_config INTEGRATION_KEY "")
+  
+  # Fallback to INTEGRATION_KEY environment variable if not set via plugin config
+  if [[ -z "${integration_key}" && -n "${INTEGRATION_KEY:-}" ]]; then
+    integration_key="${INTEGRATION_KEY}"
+    log_debug "Using INTEGRATION_KEY from environment"
+  fi
+  
+  validate_required_config "integration-key" "${integration_key}"
+  
+  # Debug: log integration key length (not the actual value for security)
+  log_debug "Integration key length: ${#integration_key}"
+  
+  local check_mode
+  check_mode=$(plugin_read_config CHECK "job")
+  local severity
+  severity=$(plugin_read_config SEVERITY "error")
+  local dedup_key
+  dedup_key=$(plugin_read_config DEDUP_KEY "")
+
+  local soft_fail_allow_all="false"
+  local soft_fail_statuses_list=()
+
+  if plugin_read_list_into_result SOFT_FAIL_STATUSES; then
+    for value in "${result[@]}"; do
+      if [[ "${value}" == "*" ]]; then
+        soft_fail_allow_all="true"
+      elif [[ -n "${value}" ]]; then
+        soft_fail_statuses_list+=("${value}")
+      fi
+    done
+  fi
+
+  export INCIDENT_PAGERDUTY_SOFT_FAIL_ALLOW_ALL="${soft_fail_allow_all}"
+  export INCIDENT_PAGERDUTY_SOFT_FAIL_STATUS_LIST="${soft_fail_statuses_list[*]}"
+  
+  log_debug "Configuration loaded:"
+  log_debug "  check: ${check_mode}"
+  log_debug "  severity: ${severity}"
+  log_debug "  dedup_key: ${dedup_key:-<auto>}"
+  if [[ "${soft_fail_allow_all}" == "true" ]]; then
+    log_debug "  soft_fail_statuses: *"
+  elif [[ ${#soft_fail_statuses_list[@]} -gt 0 ]]; then
+    log_debug "  soft_fail_statuses: ${soft_fail_statuses_list[*]}"
+  else
+    log_debug "  soft_fail_statuses: <none>"
+  fi
+  
+  # Detect failures based on check mode
+  if detect_failure "${check_mode}"; then
+    log_info "Failure detected, creating PagerDuty incident"
+    
+    # Create the incident
+    local incident_response
+    if incident_response=$(create_incident "${integration_key}" "${severity}" "${dedup_key}"); then
+      # Extract incident info
+      local incident_info
+      incident_info=$(extract_incident_url "${incident_response}")
+      
+      # Create Buildkite annotation
+      create_incident_annotation "${incident_info}" "${severity}"
+      
+      log_success "PagerDuty incident workflow completed"
+    else
+      log_error "Failed to create PagerDuty incident"
+      create_error_annotation "API request failed. Check logs for details."
+      exit 1
+    fi
+  else
+    log_debug "No failure detected, skipping incident creation"
+  fi
+}
+
+# Only run if we're in a Buildkite environment
+if [[ -n "${BUILDKITE:-}" ]]; then
+  main "$@"
+else
+  log_warning "Not running in Buildkite environment, skipping plugin execution"
+fi

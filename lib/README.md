@@ -1,66 +1,69 @@
-# Library structure
+# Library Structure
 
-This directory contains shared utilities and optional modules for complex plugins.
+This directory contains shared utilities and modules for the Incident PagerDuty plugin.
 
-## Core files
+## Core Files
 
 - **`shared.bash`**: Common utilities and logging functions
 - **`plugin.bash`**: Configuration reading helpers
 
-## When to use modules in `modules/`
+## Modules
 
-- **Multiple distinct features**: When your plugin handles several unrelated tasks (auth, deploy, notify)
-- **Large codebase**: When your main plugin script becomes too large (>200 lines)
-- **Reusable components**: When you have functionality shared between hooks
-- **Provider-specific logic**: When supporting multiple cloud providers or backends
+The plugin is organized into feature-specific modules:
 
-## Examples
+### `modules/pagerduty.bash`
 
-- **`auth.bash`**: Authentication handling
-- **`deploy.bash`**: Deployment logic
-- **`aws.bash`**: AWS-specific functionality
-- **`gcp.bash`**: Google Cloud functionality
+PagerDuty Events API v2 integration:
 
-## Module pattern
+- `build_incident_payload()` - Constructs incident payload with Buildkite context
+- `create_incident()` - Sends incident to PagerDuty
+- `extract_incident_url()` - Parses incident URL from API response
+- `generate_dedup_key()` - Creates deduplication keys
 
-Each module should:
+### `modules/failure_detector.bash`
 
-1. **Focus on one feature area** (e.g., authentication, deployment, notification)
-2. **Provide clear function interfaces** with usage comments
-3. **Handle its own validation and setup**
-4. **Use shared utilities** from `lib/shared.bash`
+Failure detection logic:
 
-## Example structure
+- `check_job_failure()` - Detects job-level failures via exit status
+- `check_build_failure()` - Detects build-level failures via Buildkite API
+- `detect_failure()` - Main entry point for failure detection
+
+### `modules/annotation.bash`
+
+Buildkite annotation creation:
+
+- `create_incident_annotation()` - Creates annotations with incident links
+- `create_error_annotation()` - Creates error annotations
+
+## Structure
 
 ```bash
 lib/
-├── shared.bash              # Common utilities used everywhere
-├── plugin.bash              # Configuration helpers
-├── modules/                 # Feature modules
-│   ├── auth.bash           # Authentication handling
-│   └── deploy.bash         # Deployment logic
-└── providers/               # Provider-specific implementations (optional)
-    ├── aws.bash            # AWS-specific logic
-    └── gcp.bash            # Google Cloud logic
+├── shared.bash                    # Common utilities and logging
+├── plugin.bash                    # Configuration reading helpers
+└── modules/                       # Feature modules
+    ├── pagerduty.bash            # PagerDuty API integration
+    ├── failure_detector.bash     # Failure detection logic
+    └── annotation.bash           # Buildkite annotations
 ```
 
-## Loading modules
+## Usage
+
+Modules are loaded in the `pre-exit` hook:
 
 ```bash
-# In your hook script
-# Load feature modules
-# shellcheck source=lib/modules/auth.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../lib/modules/auth.bash"
+# shellcheck source=lib/shared.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/shared.bash"
 
-# Load provider-specific modules
-# shellcheck source=lib/providers/aws.bash
-source "$(dirname "${BASH_SOURCE[0]}")/../lib/providers/aws.bash"
+# shellcheck source=lib/plugin.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/plugin.bash"
 
-# Use functions
-setup_auth_environment
-setup_aws_environment
+# shellcheck source=lib/modules/pagerduty.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/modules/pagerduty.bash"
+
+# shellcheck source=lib/modules/failure_detector.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/modules/failure_detector.bash"
+
+# shellcheck source=lib/modules/annotation.bash
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/modules/annotation.bash"
 ```
-
-## Simple plugins
-
-For simple plugins with <100 lines of logic, keep everything in your main hook script and `lib/plugin.bash`. Only create modules/providers when complexity justifies the separation.

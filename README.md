@@ -1,194 +1,163 @@
-# Template Buildkite Plugin [![Build status](https://badge.buildkite.com/d673030645c7f3e7e397affddd97cfe9f93a40547ed17b6dc5.svg)](https://buildkite.com/buildkite/plugins-template)
+# Incident PagerDuty Buildkite Plugin
 
-A Buildkite plugin for something awesome
+Automatically create PagerDuty incidents when Buildkite builds or jobs fail.
 
-## Getting started
+## Features
 
-1. **Update plugin name**: Change `YOUR_PLUGIN_NAME` in `lib/plugin.bash`
-2. **Customize configuration**: Modify `plugin.yml` for your options
-3. **Add your logic**: Implement features in `hooks/command`
-4. **Use modules**: For complex plugins, add modules in `lib/modules/`
-5. **Test thoroughly**: Add tests in `tests/` directory
+- 🚨 **Automatic incident creation** when builds or jobs fail
+- 🎯 **Flexible failure detection** - check build status or job status
+- 📝 **Rich incident details** - includes pipeline, branch, build URL, job info, and timestamps
+- 🔗 **Buildkite annotations** - creates annotations with direct links to PagerDuty incidents
+- 🔑 **Secure credential handling** - uses environment variables for integration keys
+- ⚙️ **Customizable severity levels** - critical, error, warning, or info
 
-## Architecture
+## Required Configuration
 
-- **`hooks/command`**: Main execution logic
-- **`lib/shared.bash`**: Common utilities and logging
-- **`lib/plugin.bash`**: Configuration reading helpers
-- **`lib/modules/`**: Optional feature modules for complex plugins
-- **`hooks/environment`**: Optional early setup (for complex plugins only)
+### `integration-key` (string)
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development guidelines.
+The PagerDuty integration key for your service. This is a 32-character hex string (e.g., `95ed048753ef450ac065962fdgse1d1c`) that routes incidents to the correct service. 
 
-## Options
-
-These are all the options available to configure this plugin's behaviour.
-
-### Required
-
-#### `mandatory` (string)
-
-A great description of what this is supposed to do.
-
-### Optional
-
-#### `optional` (string)
-
-Describe how the plugin behaviour changes if this option is not specified, allowed values and its default.
-
-#### `numbers` (array)
-
-An array of numeric values for processing. Each element must be a number.
-
-#### `enabled` (boolean)
-
-Enable or disable a specific feature. Defaults to `false`.
-
-#### `config` (object)
-
-Configuration object with key-value pairs.
-
-##### `config.host` (string, required)
-
-The hostname or IP address to connect to.
-
-##### `config.port` (number, optional)
-
-The port number to use for the connection. Defaults to `1234`.
-
-##### `config.ssl` (boolean, optional)
-
-Whether to use SSL/TLS for the connection. Defaults to `true`.
-
-#### `timeout` (number)
-
-Timeout value in seconds. Must be between 1 and 60 seconds.
-
-
-## Examples
-
-### Basic usage
-
-Minimal configuration with just the required option:
+If you need to create one, follow PagerDuty's guide to [generate a new integration key](https://support.pagerduty.com/main/docs/services-and-integrations#generate-a-new-integration-key). Use your preferred secret management tool to store the key securely.
 
 ```yaml
 steps:
-  - label: "🔨 Basic plugin usage"
-    command: "echo processing"
+  # Fetch secrets once for entire pipeline
+  - label: "🔐 Fetch PagerDuty Credentials"
+    key: "fetch-pagerduty-secrets"
     plugins:
-      - template#v1.0.0:
-          mandatory: "required-value"
+      # Choose your secret management solution:
+      - secrets#v1.0.0:                    # Buildkite Secrets
+          env:
+            PAGERDUTY_INTEGRATION_KEY: your-secret-key
+      # OR
+      - vault-secrets#v2.2.1:              # HashiCorp Vault
+          server: ${VAULT_ADDR}
+          secrets:
+            - path: secret/pagerduty/integration-key
+              field: PAGERDUTY_INTEGRATION_KEY
+      # OR  
+      - aws-sm#v1.0.0:                     # AWS Secrets Manager
+          secrets:
+            - name: PAGERDUTY_INTEGRATION_KEY
+              key: pagerduty/integration-key
+      # OR
+      - aws-ssm#v1.0.0:                    # AWS SSM Parameter Store
+          parameters:
+            PAGERDUTY_INTEGRATION_KEY: /pagerduty/integration-key
+    command: "./run-tests.sh"
+        
 ```
 
-### With optional parameters
+## Optional Configuration
 
-Adding optional configuration:
+### `check` (string)
 
-```yaml
-steps:
-  - label: "🔨 Plugin with options"
-    command: "echo processing with options"
-    plugins:
-      - template#v1.0.0:
-          mandatory: "required-value"
-          optional: "custom-value"
-          timeout: 45
-```
+What to check for failures. Options:
 
-### Array processing
+- `job` (default) - Create incident when the current job fails (requires a `command` in your step)
+- `build` - Create incident when the build is failing (detects adjacent job failures while jobs are still running)
 
-Handling arrays of values:
+**Default:** `job`
 
-```yaml
-steps:
-  - label: "🔨 Array processing"
-    command: "echo processing numbers"
-    plugins:
-      - template#v1.0.0:
-          mandatory: "required-value"
-          numbers: [1, 2, 3, 5, 8]
-```
+**Note:**
 
-### Feature toggles
+1. The `job` mode requires a `command` in your pipeline step because it monitors the command's exit status.
+2. The `build` mode requires a `BUILDKITE_API_TOKEN` in your pipeline secrets because it monitors the build's status via the Buildkite API.
 
-Using boolean flags to control behavior:
+### `severity` (string)
 
-```yaml
-steps:
-  - label: "🔨 Feature enabled"
-    command: "echo enhanced processing"
-    plugins:
-      - template#v1.0.0:
-          mandatory: "required-value"
-          enabled: true
-```
+PagerDuty incident severity level. Options: `critical`, `error`, `warning`, `info`
 
-### Complex configuration
+**Default:** `error`
 
-Using nested configuration objects:
+### `dedup-key` (string)
+
+Custom deduplication key for the incident. If not provided, a key will be auto-generated based on the pipeline, build number, and job ID.
+
+### `soft-fail-statuses` (string | array)
+
+Exit statuses that should be treated as soft-fail for job-level detection. When the current step exits with one of these statuses (or any status when set to "*") , no incident will be created for `check: job`.
+
+**Applies to:** `check: job` only. Build-level detection ignores this setting.
+
+### Complete Examples
+
+#### Job failure detection (`check: job`)
 
 ```yaml
 steps:
-  - label: "🔨 Complex config"
-    command: "echo connecting to service"
-    plugins:
-      - template#v1.0.0:
-          mandatory: "required-value"
-          config:
-            host: "api.example.com"
-            port: 8080
-            ssl: false
-```
-
-### Secrets and environment variables
-
-Secure handling of secrets using environment variables:
-
-```yaml
-steps:
-  - label: "🔨 Using secrets"
-    command: "echo authenticated processing"
+  - label: "🧪 Tests"
+    command: "./run-tests.sh"
     plugins:
       - secrets#v1.0.0:
-          MY_SECRET_TOKEN: secret_key_in_buildkite_secrets
-      - template#v1.0.0:
-          mandatory: "required-value"
-          optional: "MY_SECRET_TOKEN"  # Pass env var name instead of secret value
+          env:
+            PAGERDUTY_INTEGRATION_KEY: pagerduty-integration-key
+      - incident-pagerduty#v1.0.0:
+          integration-key: "${PAGERDUTY_INTEGRATION_KEY}"
+          soft-fail-statuses: ["42", "123"] # or "*" for any status
+          severity: warning
+          check: job
 ```
 
-In the plugin code, use `${!config_value}` to get the secret value from the environment variable name.
+#### Build failure detection (`check: build`)
 
-### Debug mode
-
-Enabling verbose logging for troubleshooting:
+> Requires `BUILDKITE_API_TOKEN` to be available in the environment (for example via a secrets plugin).
 
 ```yaml
 steps:
-  - label: "🔨 Debug mode"
-    command: "echo detailed processing"
+  - label: "🚀 Deploy"
+    command: "./deploy.sh"
     plugins:
-      - template#v1.0.0:
-          mandatory: "required-value"
-    env:
-      BUILDKITE_PLUGIN_DEBUG: "true"
+      - vault-secrets#v2.2.1:
+          server: ${VAULT_ADDR}
+          secrets:
+            - path: secret/pagerduty/integration-key
+              field: PAGERDUTY_INTEGRATION_KEY
+            - path: secret/buildkite/api-token
+              field: BUILDKITE_API_TOKEN
+      - incident-pagerduty#v1.0.0:
+          integration-key: "${PAGERDUTY_INTEGRATION_KEY}"
+          dedup-key: "custom-dedup-key-123"
+          severity: critical
+          check: build
 ```
+
+## How It Works
+
+1. **Hook Execution**: The plugin runs as a `pre-exit` hook at the end of your job's lifecycle
+2. **Failure Detection**: Checks the configured status (job or build) for failures
+3. **Incident Creation**: If a failure is detected, sends an event to PagerDuty's Events API v2
+4. **Annotation**: Creates a Buildkite annotation with incident details and a direct link to the PagerDuty incident
+
+### Important: Command Requirement
+
+**The plugin requires a `command` in your pipeline step** when using `check: job` mode. This is because the plugin monitors the command's exit status to detect failures.
+
+**Note:** If using `check: build` mode only, a command is technically optional since the plugin only checks build-level status via the API. However, this is an uncommon use case.
+
+## Requirements
+
+- Bash
+- `curl` (for API calls)
+- PagerDuty integration key
+- Buildkite agent with access to make HTTPS requests to `events.pagerduty.com`
 
 ## Compatibility
 
 | Elastic Stack | Agent Stack K8s | Hosted (Mac) | Hosted (Linux) | Notes |
 | :-----------: | :-------------: | :----------: | :------------: | :---- |
-|       ?       |        ?        |      ?       |       ?        | n/a   |
+|       ✅       |        ✅        |      ✅       |       ✅        | Requires `curl` |
 
-- ✅ Fully supported (all combinations of attributes have been tested to pass)
-- ⚠️ Partially supported (some combinations cause errors/issues)
+- ✅ Fully supported
+- ⚠️ Partially supported
 - ❌ Not supported
 
 ## 👩‍💻 Contributing
 
-1. Follow the patterns established in this template
+1. Follow the patterns established in the template
 2. Add tests for new functionality
 3. Update documentation for any new options
-4. Ensure shellcheck passes (fix issues, don't just disable checks - disabling should be done very seldomly and with team documentation/agreement)
+4. Ensure shellcheck passes (fix issues, don't just disable checks)
 5. Test with the plugin tester
 
 ## Developing
@@ -202,14 +171,13 @@ docker run -it --rm -v "$PWD:/plugin:ro" buildkite/plugin-tester
 **Validate plugin structure:**
 
 ```bash
-# Replace 'your-plugin-name' with your actual plugin name
-docker run -it --rm -v "$PWD:/plugin:ro" buildkite/plugin-linter --id your-plugin-name --path /plugin
+docker run -it --rm -v "$PWD:/plugin:ro" buildkite/plugin-linter --id incident-pagerduty --path /plugin
 ```
 
 **Run shellcheck:**
 
 ```bash
-shellcheck hooks/* tests/* lib/*.bash lib/modules/* lib/providers/*
+shellcheck hooks/* lib/*.bash
 ```
 
 ## 📜 License

@@ -6,140 +6,279 @@ setup() {
   # Uncomment to enable stub debugging
   # export CURL_STUB_DEBUG=/dev/tty
 
-  # you can set variables common to all tests here
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_MANDATORY='Value'
+  # Set common variables for all tests
+  export BUILDKITE="true"
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_INTEGRATION_KEY='95ed048753ef450ac065962fdaee1d1c'
+  export BUILDKITE_ORGANIZATION_SLUG='test-org'
+  export BUILDKITE_PIPELINE_SLUG='test-pipeline'
+  export BUILDKITE_BUILD_NUMBER='123'
+  export BUILDKITE_BUILD_URL='https://buildkite.com/test-org/test-pipeline/builds/123'
+  export BUILDKITE_JOB_ID='abc-123-def'
+  export BUILDKITE_LABEL='Test Job'
+  export BUILDKITE_BRANCH='main'
+  export BUILDKITE_COMMIT='abc123def456'
+  export BUILDKITE_MESSAGE='Test commit message'
+  export BUILDKITE_AGENT_NAME='test-agent'
+  export BUILDKITE_COMMAND_EXIT_STATUS='0'
 }
 
-@test "Missing mandatory option fails" {
-  unset BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_MANDATORY
+teardown() {
+  unstub curl || true
+  unstub buildkite-agent || true
+}
 
-  run "$PWD"/hooks/command
+@test "Missing integration-key fails" {
+  unset BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_INTEGRATION_KEY
+
+  run "$PWD"/hooks/pre-exit
 
   assert_failure 1
-  assert_output --partial 'mandatory option is required but not provided'
-  refute_output --partial 'Running plugin'
+  assert_output --partial 'integration-key is required but not provided'
 }
 
-@test "Normal basic operations" {
+@test "No failure detected - skips incident creation" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='0'
 
-  run "$PWD"/hooks/command
+  run "$PWD"/hooks/pre-exit
 
   assert_success
-  assert_output --partial 'Running plugin with options'
-  assert_output --partial 'mandatory: Value'
+  refute_output --partial 'Creating PagerDuty incident'
 }
 
-@test "Optional value changes bejaviour" {
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_OPTIONAL='other value'
+@test "Job failure detected - creates incident" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='1'
+  
+  stub curl \
+    '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
+  
+  stub buildkite-agent \
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
-  run "$PWD"/hooks/command
+  run "$PWD"/hooks/pre-exit
 
   assert_success
-  assert_output --partial 'Running plugin with options'
-  assert_output --partial 'optional: other value'
+  assert_output --partial 'Job failure detected'
+  assert_output --partial 'creating PagerDuty incident'
+  assert_output --partial 'PagerDuty incident workflow completed'
 }
 
-@test "Numbers array processing" {
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_NUMBERS_0='1'
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_NUMBERS_1='2'
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_NUMBERS_2='3'
+@test "Custom severity level - critical" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='1'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_SEVERITY='critical'
+  
+  stub curl \
+    '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
+  
+  stub buildkite-agent \
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
-  run "$PWD"/hooks/command
+  run "$PWD"/hooks/pre-exit
 
   assert_success
-  assert_output --partial 'Running plugin with options'
-  assert_output --partial 'numbers: 1, 2, 3'
+  assert_output --partial 'Job failure detected'
+  assert_output --partial 'creating PagerDuty incident'
 }
 
-@test "Enabled boolean feature toggle" {
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_ENABLED='true'
+@test "Custom dedup key" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='1'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_DEDUP_KEY='custom-dedup-key-123'
+  
+  stub curl \
+    '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"custom-dedup-key-123\"}"; echo "202"'
+  
+  stub buildkite-agent \
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
-  run "$PWD"/hooks/command
+  run "$PWD"/hooks/pre-exit
 
   assert_success
-  assert_output --partial 'Running plugin with options'
-  assert_output --partial 'enabled: true'
+  assert_output --partial 'creating PagerDuty incident'
 }
 
-@test "Config object with nested properties" {
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_CONFIG_HOST='example.com'
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_CONFIG_PORT='8080'
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_CONFIG_SSL='true'
+@test "Soft-fail exit status list skips incident" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='42'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_SOFT_FAIL_STATUSES_0='42'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_SOFT_FAIL_STATUSES_1='99'
 
-  run "$PWD"/hooks/command
+  run "$PWD"/hooks/pre-exit
 
   assert_success
-  assert_output --partial 'Running plugin with options'
-  assert_output --partial 'config.host: example.com'
-  assert_output --partial 'config.port: 8080'
-  assert_output --partial 'config.ssl: true'
+  assert_output --partial 'Job exit status 42 is configured as soft-fail'
+  refute_output --partial 'creating PagerDuty incident'
 }
 
-@test "Timeout number validation" {
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_TIMEOUT='30'
+@test "Soft-fail wildcard skips incident" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='7'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_SOFT_FAIL_STATUSES='*'
 
-  run "$PWD"/hooks/command
+  run "$PWD"/hooks/pre-exit
 
   assert_success
-  assert_output --partial 'Running plugin with options'
-  assert_output --partial 'timeout: 30'
+  assert_output --partial 'Job exit status 7 is configured as soft-fail'
+  refute_output --partial 'creating PagerDuty incident'
 }
 
-@test "Timeout exceeds maximum fails" {
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_TIMEOUT='100'
+@test "Check mode defaults to job" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='1'
+  
+  stub curl \
+    '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
+  
+  stub buildkite-agent \
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
 
-  run "$PWD"/hooks/command
-
-  assert_failure 1
-  assert_output --partial 'timeout must be between 1 and 60 seconds'
-  refute_output --partial 'Running plugin with options'
-}
-
-@test "Timeout below minimum fails" {
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_TIMEOUT='0'
-
-  run "$PWD"/hooks/command
-
-  assert_failure 1
-  assert_output --partial 'timeout must be between 1 and 60 seconds'
-  refute_output --partial 'Running plugin with options'
-}
-
-@test "Shows default values when not specified" {
-  run "$PWD"/hooks/command
+  run "$PWD"/hooks/pre-exit
 
   assert_success
-  assert_output --partial 'Running plugin with options'
-  assert_output --partial 'enabled: false'
+  assert_output --partial 'Job failure detected'
 }
 
-@test "Config with only required host field" {
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_CONFIG_HOST='test.com'
+@test "Skips execution when not in Buildkite environment" {
+  unset BUILDKITE
 
-  run "$PWD"/hooks/command
+  run "$PWD"/hooks/pre-exit
 
   assert_success
-  assert_output --partial 'Running plugin with options'
-  assert_output --partial 'config.host: test.com'
-  assert_output --partial 'config.port: 1234'
-  assert_output --partial 'config.ssl: true'
+  assert_output --partial 'Not running in Buildkite environment'
 }
 
-@test "Handles missing numbers array gracefully" {
-  run "$PWD"/hooks/command
+@test "Check mode 'build' detects build failure" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='0'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_CHECK='build'
+  export BUILDKITE_API_TOKEN='test-token'
+  
+  stub curl \
+    '-s -S -f -H "Authorization: Bearer test-token" https://api.buildkite.com/v2/organizations/test-org/pipelines/test-pipeline/builds/123 : echo "{\"state\":\"failed\"}"' \
+    '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
+  
+  stub buildkite-agent \
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
+
+  run "$PWD"/hooks/pre-exit
 
   assert_success
-  assert_output --partial 'Running plugin with options'
-  refute_output --partial 'numbers:'
+  assert_output --partial 'Build failure detected'
+  assert_output --partial 'creating PagerDuty incident'
 }
 
-@test "Enabled boolean set to false explicitly" {
-  export BUILDKITE_PLUGIN_YOUR_PLUGIN_NAME_ENABLED='false'
+@test "Check mode 'build' skips when build is passing" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='0'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_CHECK='build'
+  export BUILDKITE_API_TOKEN='test-token'
+  
+  stub curl \
+    '-s -S -f -H "Authorization: Bearer test-token" https://api.buildkite.com/v2/organizations/test-org/pipelines/test-pipeline/builds/123 : echo "{\"state\":\"passed\"}"'
 
-  run "$PWD"/hooks/command
+  run "$PWD"/hooks/pre-exit
 
   assert_success
-  assert_output --partial 'Running plugin with options'
-  assert_output --partial 'enabled: false'
+  refute_output --partial 'creating PagerDuty incident'
+}
+
+
+@test "Severity 'warning' uses warning annotation style" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='1'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_SEVERITY='warning'
+  
+  stub curl \
+    '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
+  
+  stub buildkite-agent \
+    "annotate --style warning --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
+
+  run "$PWD"/hooks/pre-exit
+
+  assert_success
+  assert_output --partial 'creating PagerDuty incident'
+}
+
+@test "Severity 'info' uses info annotation style" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='1'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_SEVERITY='info'
+  
+  stub curl \
+    '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
+  
+  stub buildkite-agent \
+    "annotate --style info --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
+
+  run "$PWD"/hooks/pre-exit
+
+  assert_success
+  assert_output --partial 'creating PagerDuty incident'
+}
+
+@test "Handles PagerDuty API failure gracefully" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='1'
+  
+  stub curl \
+    '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"error\",\"message\":\"Invalid routing key\"}"; echo "400"'
+  
+  stub buildkite-agent \
+    "annotate --style warning --context pagerduty-error-abc-123-def : echo 'Error annotation created'"
+
+  run "$PWD"/hooks/pre-exit
+
+  assert_failure
+  assert_output --partial 'Failed to create PagerDuty incident'
+}
+
+@test "Debug mode shows additional logging" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='1'
+  export BUILDKITE_PLUGIN_DEBUG='true'
+  
+  stub curl \
+    '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
+  
+  stub buildkite-agent \
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
+
+  run "$PWD"/hooks/pre-exit
+
+  assert_success
+  assert_output --partial 'Debug mode enabled'
+  assert_output --partial '[DEBUG]'
+}
+
+@test "Build check handles missing BUILD_URL" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='0'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_CHECK='build'
+  unset BUILDKITE_BUILD_URL
+  unset BUILDKITE_BUILD_ID
+
+  run "$PWD"/hooks/pre-exit
+
+  assert_success
+  assert_output --partial 'Cannot determine build API URL'
+}
+
+@test "Build check handles missing access token" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='0'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_CHECK='build'
+  unset BUILDKITE_API_TOKEN
+
+  run "$PWD"/hooks/pre-exit
+
+  assert_success
+  assert_output --partial 'Build-level failure detection requires BUILDKITE_API_TOKEN'
+}
+
+@test "Detects canceled build state as failure" {
+  export BUILDKITE_COMMAND_EXIT_STATUS='0'
+  export BUILDKITE_PLUGIN_INCIDENT_PAGERDUTY_CHECK='build'
+  export BUILDKITE_API_TOKEN='test-token'
+  
+  stub curl \
+    '-s -S -f -H "Authorization: Bearer test-token" https://api.buildkite.com/v2/organizations/test-org/pipelines/test-pipeline/builds/123 : echo "{\"state\":\"canceled\"}"' \
+    '-s -w * -X POST https://events.pagerduty.com/v2/enqueue -H "Content-Type: application/json" -d * : echo "{\"status\":\"success\",\"dedup_key\":\"test-key\"}"; echo "202"'
+  
+  stub buildkite-agent \
+    "annotate --style error --context pagerduty-incident-abc-123-def : echo 'Annotation created'"
+
+  run "$PWD"/hooks/pre-exit
+
+  assert_success
+  assert_output --partial 'Build failure detected'
+  assert_output --partial 'creating PagerDuty incident'
 }
 
