@@ -65,7 +65,8 @@ main() {
   fi
 
   export INCIDENT_PAGERDUTY_SOFT_FAIL_ALLOW_ALL="${soft_fail_allow_all}"
-  export INCIDENT_PAGERDUTY_SOFT_FAIL_STATUS_LIST="${soft_fail_statuses_list[*]}"
+  local soft_fail_statuses_value="${soft_fail_statuses_list[*]-}"
+  export INCIDENT_PAGERDUTY_SOFT_FAIL_STATUS_LIST="${soft_fail_statuses_value}"
   
   log_debug "Configuration loaded:"
   log_debug "  check: ${check_mode}"
