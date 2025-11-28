@@ -36,7 +36,7 @@ steps:
             - path: secret/pagerduty/integration-key
               field: PAGERDUTY_INTEGRATION_KEY
       # OR  
-      - aws-sm#v1.0.0:                     # AWS Secrets Manager
+      - seek-oss/aws-sm#v2.3.3:                     # AWS Secrets Manager
           secrets:
             - name: PAGERDUTY_INTEGRATION_KEY
               key: pagerduty/integration-key
