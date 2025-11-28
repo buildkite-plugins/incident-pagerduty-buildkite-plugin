@@ -17,35 +17,30 @@ Automatically create PagerDuty incidents when Buildkite builds or jobs fail.
 
 The PagerDuty integration key for your service. This is a 32-character hex string (e.g., `95ed048753ef450ac065962fdgse1d1c`) that routes incidents to the correct service. 
 
-If you need to create one, follow PagerDuty's guide to [generate a new integration key](https://support.pagerduty.com/main/docs/services-and-integrations#generate-a-new-integration-key). Use your preferred secret management tool to store the key securely.
+If you need to create one, follow PagerDuty's guide to [generate a new integration key](https://support.pagerduty.com/main/docs/services-and-integrations#generate-a-new-integration-key). Use the [Buildkite secret](https://buildkite.com/docs/pipelines/security/secrets/buildkite-secrets#use-a-buildkite-secret-in-a-job) directly in your pipeline or your preferred secret management tool to store the key securely.
 
 ```yaml
 steps:
   # Fetch secrets once for entire pipeline
   - label: "🔐 Fetch PagerDuty Credentials"
     key: "fetch-pagerduty-secrets"
+
+# Use Buildkite secret directly in your pipeline
+secrets:
+  - PAGERDUTY_INTEGRATION_KEY
+
+# Or use your preferred secret plugin
     plugins:
-      # Choose your secret management solution:
-      - secrets#v1.0.0:                    # Buildkite Secrets
-          env:
-            PAGERDUTY_INTEGRATION_KEY: your-secret-key
-      # OR
-      - vault-secrets#v2.2.1:              # HashiCorp Vault
+      - vault-secrets#v2.3.1:              # HashiCorp Vault
           server: ${VAULT_ADDR}
           secrets:
             - path: secret/pagerduty/integration-key
               field: PAGERDUTY_INTEGRATION_KEY
       # OR  
-      - seek-oss/aws-sm#v2.3.3:                     # AWS Secrets Manager
+      - seek-oss/aws-sm#v2.3.3:            # AWS Secrets Manager
           secrets:
             - name: PAGERDUTY_INTEGRATION_KEY
               key: pagerduty/integration-key
-      # OR
-      - aws-ssm#v1.0.0:                    # AWS SSM Parameter Store
-          parameters:
-            PAGERDUTY_INTEGRATION_KEY: /pagerduty/integration-key
-    command: "./run-tests.sh"
-        
 ```
 
 ## Optional Configuration
