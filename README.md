@@ -26,12 +26,12 @@ steps:
     key: "fetch-pagerduty-secrets"
     plugins:
       # Choose your secret management solution:
-      - secrets#v1.0.0:                    # Buildkite Secrets
+      - secrets#v1.0.2:                    # Buildkite Secrets
           env:
             PAGERDUTY_INTEGRATION_KEY: your-secret-key
       # OR
-      - vault-secrets#v2.2.1:              # HashiCorp Vault
-          server: ${VAULT_ADDR}
+      - vault-secrets#v2.3.1:              # HashiCorp Vault
+          server: "https://my-vault-server"
           secrets:
             - path: secret/pagerduty/integration-key
               field: PAGERDUTY_INTEGRATION_KEY
@@ -40,10 +40,6 @@ steps:
           secrets:
             - name: PAGERDUTY_INTEGRATION_KEY
               key: pagerduty/integration-key
-      # OR
-      - aws-ssm#v1.0.0:                    # AWS SSM Parameter Store
-          parameters:
-            PAGERDUTY_INTEGRATION_KEY: /pagerduty/integration-key
     command: "./run-tests.sh"
         
 ```
@@ -89,7 +85,7 @@ steps:
   - label: "🧪 Tests"
     command: "./run-tests.sh"
     plugins:
-      - secrets#v1.0.0:
+      - secrets#v1.0.2:
           env:
             PAGERDUTY_INTEGRATION_KEY: pagerduty-integration-key
       - incident-pagerduty#v1.0.0:
@@ -108,8 +104,8 @@ steps:
   - label: "🚀 Deploy"
     command: "./deploy.sh"
     plugins:
-      - vault-secrets#v2.2.1:
-          server: ${VAULT_ADDR}
+      - vault-secrets#v2.3.1:
+          server: "https://my-vault-server"
           secrets:
             - path: secret/pagerduty/integration-key
               field: PAGERDUTY_INTEGRATION_KEY
